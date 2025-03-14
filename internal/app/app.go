@@ -14,6 +14,7 @@ func NewApp() *fiber.App {
 	templates.InitEngine()
 	configs.LoadEnv()
 	database.ConnectToDB()
+	database.SyncDatabase()
 	app := fiber.New(configs.NewFiberConfig())
 	routes.SetupRoutes(app)
 	return app
