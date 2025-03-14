@@ -9,4 +9,5 @@ func SetupRoutes(app *fiber.App) {
 	api := app.Group("/api")
 
 	api.Get("/", http.HomePage)
+	api.Get("/register", http.Register)
 }

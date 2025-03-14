@@ -2,6 +2,7 @@ package app
 
 import (
 	"github.com/terfo1/news/internal/configs"
+	"github.com/terfo1/news/internal/database"
 	"github.com/terfo1/news/internal/routes"
 	"github.com/terfo1/news/internal/templates"
 	"log"
@@ -11,6 +12,8 @@ import (
 
 func NewApp() *fiber.App {
 	templates.InitEngine()
+	configs.LoadEnv()
+	database.ConnectToDB()
 	app := fiber.New(configs.NewFiberConfig())
 	routes.SetupRoutes(app)
 	return app
