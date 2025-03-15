@@ -71,7 +71,7 @@ func Login(c *fiber.Ctx) error {
 		"exp": time.Now().Add(time.Hour * 24 * 7).Unix(),
 	})
 	hmacSampleSecret := os.Getenv("SECRET_KEY")
-	tokenString, err := token.SignedString(hmacSampleSecret)
+	tokenString, err := token.SignedString([]byte(hmacSampleSecret))
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "Failed to create token",
