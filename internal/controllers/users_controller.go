@@ -2,9 +2,12 @@ package controllers
 
 import (
 	"github.com/gofiber/fiber/v2"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/terfo1/news/internal/database"
 	"github.com/terfo1/news/internal/models"
 	"golang.org/x/crypto/bcrypt"
+	"os"
+	"time"
 )
 
 func SignUp(c *fiber.Ctx) error {
@@ -35,5 +38,47 @@ func SignUp(c *fiber.Ctx) error {
 
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
 		"message": "User registered successfully",
+	})
+}
+
+func Login(c *fiber.Ctx) error {
+	var body struct {
+		Email    string
+		Password string
+	}
+	if err := c.BodyParser(&body); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid request body",
+		})
+	}
+
+	var user models.User
+	database.DB.First(&user, "email = ?", body.Email)
+	if user.ID == 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid email or password",
+		})
+	}
+	err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(body.Password))
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Internal Server Error",
+		})
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"sub": user.ID,
+		"exp": time.Now().Add(time.Hour * 24 * 7).Unix(),
+	})
+	hmacSampleSecret := os.Getenv("SECRET_KEY")
+	tokenString, err := token.SignedString(hmacSampleSecret)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Failed to create token",
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"token": tokenString,
 	})
 }
