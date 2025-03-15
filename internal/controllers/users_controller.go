@@ -78,7 +78,12 @@ func Login(c *fiber.Ctx) error {
 		})
 	}
 
-	return c.Status(fiber.StatusOK).JSON(fiber.Map{
-		"token": tokenString,
-	})
+	cookie := new(fiber.Cookie)
+	cookie.Name = "Authorization"
+	cookie.Value = tokenString
+	cookie.HTTPOnly = true
+	cookie.Expires = time.Now().Add(24 * time.Hour * 7)
+	c.Cookie(cookie)
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{})
 }
