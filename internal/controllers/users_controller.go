@@ -59,6 +59,7 @@ func Login(c *fiber.Ctx) error {
 			"error": "Invalid email or password",
 		})
 	}
+
 	err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(body.Password))
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -70,8 +71,7 @@ func Login(c *fiber.Ctx) error {
 		"sub": user.ID,
 		"exp": time.Now().Add(time.Hour * 24 * 7).Unix(),
 	})
-	hmacSampleSecret := os.Getenv("SECRET_KEY")
-	tokenString, err := token.SignedString([]byte(hmacSampleSecret))
+	tokenString, err := token.SignedString([]byte(os.Getenv("SECRET_KEY")))
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "Failed to create token",
@@ -86,4 +86,11 @@ func Login(c *fiber.Ctx) error {
 	c.Cookie(cookie)
 
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{})
+}
+
+func Profile(c *fiber.Ctx) error {
+	user := c.Locals("user")
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"msg": user,
+	})
 }
