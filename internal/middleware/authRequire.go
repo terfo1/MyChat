@@ -7,11 +7,18 @@ import (
 	"github.com/terfo1/news/internal/database"
 	"github.com/terfo1/news/internal/models"
 	"os"
+	"strings"
 	"time"
 )
 
 func AuthRequire(c *fiber.Ctx) error {
 	tokenString := c.Cookies("Authorization")
+	if tokenString == "" {
+		authHeader := c.Get("Authorization")
+		if strings.HasPrefix(authHeader, "Bearer ") {
+			tokenString = strings.TrimPrefix(authHeader, "Bearer ")
+		}
+	}
 	if tokenString == "" {
 		return c.Status(fiber.StatusUnauthorized).SendString("Unauthorized: missing token")
 	}
@@ -31,19 +38,19 @@ func AuthRequire(c *fiber.Ctx) error {
 
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 		if float64(time.Now().Unix()) > claims["exp"].(float64) {
-			c.Status(fiber.StatusUnauthorized).SendString("Unauthorized")
+			return c.Status(fiber.StatusUnauthorized).SendString("Unauthorized")
 		}
 
 		var user models.User
 		database.DB.First(&user, claims["sub"])
 
 		if user.ID == 0 {
-			c.Status(fiber.StatusUnauthorized).SendString("Unauthorized")
+			return c.Status(fiber.StatusUnauthorized).SendString("Unauthorized")
 		}
 
 		c.Locals("user", user)
 	} else {
-		c.Status(fiber.StatusUnauthorized).SendString("Unauthorized")
+		return c.Status(fiber.StatusUnauthorized).SendString("Unauthorized")
 	}
 
 	return c.Next()
