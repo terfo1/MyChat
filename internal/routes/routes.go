@@ -15,5 +15,6 @@ func SetupRoutes(app *fiber.App) {
 	api.Post("/login", controllers.Login)
 	api.Get("/profile", middleware.AuthRequire, controllers.Profile)
 	api.Use("/ws", middleware.AuthRequire, middleware.WsUpgrade)
-	api.Get("/ws/:id", websocket.New(controllers.GetMessage))
+	api.Get("/ws/:id", websocket.New(controllers.ChatHandler))
+	api.Get("/messages/:user1/:user2", middleware.AuthRequire, controllers.GetChatHistory)
 }

@@ -1,33 +1,64 @@
 package controllers
 
 import (
+	"encoding/json"
 	"github.com/gofiber/contrib/websocket"
+	"github.com/terfo1/news/internal/database"
+	"github.com/terfo1/news/internal/models"
 	"log"
+	"strconv"
 )
 
-func GetMessage(c *websocket.Conn) {
-	// c.Locals is added to the *websocket.Conn
-	log.Println(c.Locals("allowed"))  // true
-	log.Println(c.Params("id"))       // 123 	// 1.0
-	log.Println(c.Cookies("session")) // ""
+var clients = make(map[*websocket.Conn]uint)
 
-	// websocket.Conn bindings https://pkg.go.dev/github.com/fasthttp/websocket?tab=doc#pkg-index
-	var (
-		mt  int
-		msg []byte
-		err error
-	)
+func ChatHandler(c *websocket.Conn) {
+	defer func() {
+		delete(clients, c)
+		c.Close()
+	}()
+
+	userID, err := strconv.Atoi(c.Params("id"))
+	if err != nil {
+		log.Println("Invalid user ID")
+		return
+	}
+	clients[c] = uint(userID)
+	log.Println("User connected:", userID)
+
 	for {
-		if mt, msg, err = c.ReadMessage(); err != nil {
-			log.Println("read:", err)
+		_, msg, err := c.ReadMessage()
+		if err != nil {
+			log.Println("Read error:", err)
 			break
 		}
-		log.Printf("recv: %s", msg)
 
-		if err = c.WriteMessage(mt, msg); err != nil {
-			log.Println("write:", err)
-			break
+		var message models.Message
+		log.Println("Received raw message:", string(msg))
+		err = json.Unmarshal(msg, &message)
+		if err != nil {
+			log.Println("JSON error:", err)
+			continue
+		}
+
+		var sender, receiver models.User
+		if err := database.DB.First(&sender, message.SenderID).Error; err != nil {
+			log.Println("Sender not found")
+			continue
+		}
+		if err := database.DB.First(&receiver, message.ReceiverID).Error; err != nil {
+			log.Println("Receiver not found")
+			continue
+		}
+
+		database.DB.Create(&message)
+
+		for conn, user := range clients {
+			if user == message.ReceiverID {
+				err = conn.WriteJSON(message)
+				if err != nil {
+					log.Println("Write error:", err)
+				}
+			}
 		}
 	}
-
 }
